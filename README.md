@@ -62,12 +62,16 @@ just ci           # everything CI runs, in CI's order
 The toolchain is pinned in `rust-toolchain.toml`, wasm target included, so a
 bare `rustup toolchain install` in the checkout sets up everything. The smoke
 test needs `typst`, `zbarimg` (Homebrew `zbar`) and `pdftoppm` (Homebrew
-`poppler`). CI checks that the committed `qrypst.wasm` is the build of the
-committed source, so run `just build` before committing a change to `src/`.
+`poppler`). Run `just build` before committing a change to `src/`: CI decodes
+the committed `qrypst.wasm` and then a fresh build of the source, and both
+must pass. The two are not compared byte for byte, because the macOS and
+Linux toolchains do not produce identical wasm even with source paths
+remapped; `just check-wasm` does that comparison on one machine.
 
-Releases are tags: `git tag v0.1.0 && git push --tags` builds the plugin
-twice to prove the build is reproducible and attaches `qrypst.wasm`,
-`qrypst.typ` and `SHA256SUMS` to a GitHub release.
+Releases are tags: `git tag v0.1.0 && git push --tags` builds the plugin on
+Linux twice from a clean tree to prove the build is reproducible there, and
+attaches that build, `qrypst.typ` and `SHA256SUMS` to a GitHub release. Pin
+by those checksums, not by the file in git.
 
 ## Numbers
 

@@ -30,24 +30,25 @@ jobs:
           export RUSTFLAGS="--remap-path-prefix=$HOME/.cargo/registry/src=/registry --remap-path-prefix=$PWD=/src"
           cargo build --release --locked --target wasm32-unknown-unknown
 
-      # The tag must release the plugin that is committed, not a different
-      # build of it. If they differ, someone tagged without running `just build`.
-      - name: Check the committed plugin matches the build
-        run: cmp target/wasm32-unknown-unknown/release/qrypst.wasm qrypst.wasm
-
+      # The release ships this Linux build, not the file committed from a
+      # developer's machine: the two toolchains do not produce identical wasm.
       # Two builds from a clean target directory must agree, or the checksum
       # in the release is a claim rather than a fact.
       - name: Prove the build is reproducible
         run: |
           export RUSTFLAGS="--remap-path-prefix=$HOME/.cargo/registry/src=/registry --remap-path-prefix=$PWD=/src"
-          first="$(sha256sum qrypst.wasm | cut -d' ' -f1)"
-          rm -rf target
+          first="$(sha256sum target/wasm32-unknown-unknown/release/qrypst.wasm | cut -d' ' -f1)"
+          mv target target-first-build
           cargo build --release --locked --target wasm32-unknown-unknown
           second="$(sha256sum target/wasm32-unknown-unknown/release/qrypst.wasm | cut -d' ' -f1)"
+          rm -rf target-first-build
           [ "$first" = "$second" ] || { echo "::error::not reproducible: $first != $second"; exit 1; }
+          echo "two independent builds produced $first"
 
       - name: Checksums
-        run: sha256sum qrypst.wasm qrypst.typ > SHA256SUMS
+        run: |
+          cp target/wasm32-unknown-unknown/release/qrypst.wasm qrypst.wasm
+          sha256sum qrypst.wasm qrypst.typ > SHA256SUMS
 
       - name: Attach to the release
         env:
