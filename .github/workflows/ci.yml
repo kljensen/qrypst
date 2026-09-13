@@ -33,8 +33,13 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-targets --locked -- -D warnings
 
+      # The same path remapping as `just build`: rustc embeds source paths
+      # (panic locations in dependencies), so without it every host builds a
+      # different file and the check below could never pass.
       - name: Build the plugin
-        run: cargo build --release --locked --target wasm32-unknown-unknown
+        run: |
+          export RUSTFLAGS="-D warnings --remap-path-prefix=$HOME/.cargo/registry/src=/registry --remap-path-prefix=$PWD=/src"
+          cargo build --release --locked --target wasm32-unknown-unknown
 
       # The committed qrypst.wasm is what Typst users get. It must be the
       # build of the committed source, not a stale one somebody forgot.

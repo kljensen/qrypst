@@ -23,8 +23,12 @@ jobs:
       - name: Install the pinned toolchain
         run: rustup toolchain install
 
+      # The same path remapping as `just build` and CI, so the tag's build is
+      # byte-identical to the committed file regardless of host.
       - name: Build
-        run: cargo build --release --locked --target wasm32-unknown-unknown
+        run: |
+          export RUSTFLAGS="--remap-path-prefix=$HOME/.cargo/registry/src=/registry --remap-path-prefix=$PWD=/src"
+          cargo build --release --locked --target wasm32-unknown-unknown
 
       # The tag must release the plugin that is committed, not a different
       # build of it. If they differ, someone tagged without running `just build`.
@@ -35,6 +39,7 @@ jobs:
       # in the release is a claim rather than a fact.
       - name: Prove the build is reproducible
         run: |
+          export RUSTFLAGS="--remap-path-prefix=$HOME/.cargo/registry/src=/registry --remap-path-prefix=$PWD=/src"
           first="$(sha256sum qrypst.wasm | cut -d' ' -f1)"
           rm -rf target
           cargo build --release --locked --target wasm32-unknown-unknown
