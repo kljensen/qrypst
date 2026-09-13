@@ -1,0 +1,54 @@
+name: Release
+
+# Tag `vX.Y.Z` and the plugin, its Typst wrapper, and a checksum file are
+# attached to a GitHub release, so a consumer can pin by URL and sha256 the
+# way they would any other release asset.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: Build and attach the plugin
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install the pinned toolchain
+        run: rustup toolchain install
+
+      - name: Build
+        run: cargo build --release --locked --target wasm32-unknown-unknown
+
+      # The tag must release the plugin that is committed, not a different
+      # build of it. If they differ, someone tagged without running `just build`.
+      - name: Check the committed plugin matches the build
+        run: cmp target/wasm32-unknown-unknown/release/qrypst.wasm qrypst.wasm
+
+      # Two builds from a clean target directory must agree, or the checksum
+      # in the release is a claim rather than a fact.
+      - name: Prove the build is reproducible
+        run: |
+          first="$(sha256sum qrypst.wasm | cut -d' ' -f1)"
+          rm -rf target
+          cargo build --release --locked --target wasm32-unknown-unknown
+          second="$(sha256sum target/wasm32-unknown-unknown/release/qrypst.wasm | cut -d' ' -f1)"
+          [ "$first" = "$second" ] || { echo "::error::not reproducible: $first != $second"; exit 1; }
+
+      - name: Checksums
+        run: sha256sum qrypst.wasm qrypst.typ > SHA256SUMS
+
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --notes "qrypst ${{ github.ref_name }}. Copy qrypst.wasm and qrypst.typ next to your document; verify with SHA256SUMS." \
+            qrypst.wasm qrypst.typ SHA256SUMS

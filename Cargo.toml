@@ -1,0 +1,26 @@
+[package]
+name = "qrypst"
+version = "0.1.0"
+edition = "2021"
+description = "A tiny Typst plugin that QR-encodes bytes and returns the module matrix"
+license = "Unlicense"
+repository = "https://github.com/kljensen/qrypst"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+# Nayuki's QR generator: single file, no dependencies, lets us pin the
+# error-correction level and get the module matrix back.
+qrcodegen = "1.8"
+# The Typst plugin calling convention.
+wasm-minimal-protocol = "0.2"
+
+[profile.release]
+lto = true
+strip = true
+# Typst runs plugins under wasmi, an interpreter. Size-optimised code
+# ("z") is about 2.7x slower there; speed is what we are here for.
+opt-level = 3
+codegen-units = 1
+panic = "abort"

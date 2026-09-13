@@ -1,0 +1,8 @@
+# Pinned rather than floating, so a toolchain bump is a reviewed commit and
+# not something that happens to a branch while nobody is looking. CI reads
+# this with a bare `rustup toolchain install`.
+[toolchain]
+channel = "1.89.0"
+components = ["clippy", "rustfmt"]
+targets = ["wasm32-unknown-unknown"]
+profile = "minimal"
