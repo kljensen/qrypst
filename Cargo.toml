@@ -3,7 +3,7 @@ name = "qrypst"
 version = "0.1.1"
 edition = "2021"
 description = "A tiny Typst plugin that QR-encodes bytes and returns the module matrix"
-license = "Unlicense"
+license = "Unlicense AND MIT"
 repository = "https://github.com/kljensen/qrypst"
 
 [lib]

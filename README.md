@@ -17,7 +17,9 @@ That payload needs version 2 at level M, which is 25 modules on a side, so the
 symbol prints 12.5 mm square inside a white quiet zone 2 mm wide.
 
 ```typst
-#qr(payload, module: 0.635mm, ecc: "Q", quiet: 4)
+#import "@preview/qrypst:0.1.1": qr
+
+#qr("TQ2|order-0042|903b83a5", module: 0.635mm, ecc: "Q", quiet: 4)
 ```
 
 ## Install
@@ -79,9 +81,9 @@ byte it received.
   to 177 for version 40.
 - The error-correction level is exactly the one asked for. It is never raised
   silently, even when a higher level would fit in the same version.
-- The symbol `encode` and `matrix` return has no quiet zone. `qr` draws one
-  `quiet` modules wide (the QR specification says 4), so the clearance is in
-  paper units too.
+- Neither `encode` nor `matrix` includes a quiet zone. `qr` adds a white
+  border whose width is `quiet * module` (the QR specification says 4
+  modules).
 
 ## Performance
 
@@ -122,24 +124,25 @@ change the version in the import line instead.
 
 ## Licence
 
-qrypst's own files, `qrypst.typ`, `src/lib.rs` and everything else in this
-repository, are released into the public domain under the
-[Unlicense](LICENSE). The compiled `qrypst.wasm` also contains two
+qrypst's own code, `qrypst.typ`, `src/lib.rs` and everything else in this
+repository, is released into the public domain under the
+[Unlicense](LICENSE). The compiled plugin `qrypst.wasm` embeds two
 dependencies, which keep their own licences:
 
-- [qrcodegen](https://github.com/nayuki/QR-Code-generator) is
-  Copyright (c) Project Nayuki, under the
-  [MIT licence](https://github.com/nayuki/QR-Code-generator/blob/v1.8.0/Readme.markdown#license).
-  The public-domain dedication does not cover it.
-- [wasm-minimal-protocol](https://github.com/typst-community/wasm-minimal-protocol)
-  is under the
-  [Unlicense](https://github.com/typst-community/wasm-minimal-protocol/blob/main/LICENSE).
+- [qrcodegen](https://github.com/nayuki/QR-Code-generator), Copyright
+  Project Nayuki, under the MIT licence; its notice is in
+  [LICENSE-qrcodegen](LICENSE-qrcodegen). The public-domain dedication does
+  not cover it.
+- [wasm-minimal-protocol](https://github.com/typst-community/wasm-minimal-protocol),
+  under the
+  [Unlicense](https://github.com/typst-community/wasm-minimal-protocol/blob/wasm-minimal-protocol-0.2.1/LICENSE).
+
+The manifest's `license` field, `Unlicense AND MIT`, states both.
 
 ## Alternatives
 
 - [cades](https://typst.app/universe/package/cades) runs a JavaScript QR
-  library under the jogs interpreter plugin, and can colour the code; the
-  most widely used, and the slowest.
+  library under the jogs interpreter plugin, and can colour the code.
 - [tiaoma](https://typst.app/universe/package/tiaoma) is Zint compiled to
   WebAssembly: QR plus dozens of other barcode symbologies with Zint's own
   options. The one to use if you need anything other than a QR code.
