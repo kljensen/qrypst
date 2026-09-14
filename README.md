@@ -32,7 +32,7 @@ copy two files from a [GitHub release](https://github.com/kljensen/qrypst/releas
 next to your document and check them against the release's `SHA256SUMS`:
 
 ```sh
-v=v0.1.0
+v=v0.1.1
 base=https://github.com/kljensen/qrypst/releases/download/$v
 curl -fsSLO $base/qrypst.wasm
 curl -fsSLO $base/qrypst.typ
@@ -40,10 +40,10 @@ curl -fsSLO $base/SHA256SUMS
 sha256sum --check SHA256SUMS   # on macOS: shasum -a 256 --check SHA256SUMS
 ```
 
-For v0.1.0 the checksum file reads:
+For v0.1.1 the checksum file reads:
 
 ```
-37842963245abfd50dc3278a841f17f59ca3f0a123c1df23484e26feee3b573c  qrypst.wasm
+6c335b41463519c43fdc26a419d329651fa2b8a1ab7c3451d1cafbe2cc1dac4a  qrypst.wasm
 7d8359bbb06379aab49545d3a05e97d65cbfab4b066eb6810859fee783a338b5  qrypst.typ
 ```
 
