@@ -1,79 +1,89 @@
-# qrypst
+qrypst draws QR codes with an exact printed module size: you say how big one
+module is on paper, and that is how big it prints. It is about 40 lines of Rust
+around Nayuki's [qrcodegen](https://github.com/nayuki/QR-Code-generator),
+compiled to a 42 KB WebAssembly plugin, and it takes about 7 milliseconds per
+code. It reports the module count, so nothing is inferred from a scaled image,
+and it adds no styling of its own.
 
-A tiny [Typst](https://typst.app) plugin that QR-encodes bytes and hands back
-the module matrix. About 40 lines of Rust around Nayuki's
-[qrcodegen](https://crates.io/crates/qrcodegen), compiled to a 41 KB WebAssembly
-file. No quiet zone, no styling, no SVG library: you say how big a module is on
-paper, and that is how big it is.
-
-## Why
-
-The existing Typst QR packages carry a lot of machinery for the one thing a
-document usually needs. `cades` runs a JavaScript QR library inside a
-JavaScript interpreter compiled to WebAssembly, and costs about 3.4 seconds per
-code. `tiaoma` compiles all of Zint and costs about 0.3 seconds. This plugin
-costs about 7 milliseconds per code, and the number of modules it reports is
-exact, so the printed module size is something you set rather than something you
-infer from a scaled image.
-
-## Use
-
-Copy `qrypst.wasm` and `qrypst.typ` next to your document.
+## Usage
 
 ```typst
-#import "qrypst.typ": qr
+#import "@preview/qrypst:0.1.1": qr
 
 #qr("https://example.com", module: 0.5mm)
-#qr(bytes-payload, module: 0.635mm, ecc: "Q", quiet: 4)
 ```
 
-- `module`: printed side of one module. The symbol is `n * module` square
-  plus the quiet zone.
-- `ecc`: `"L"`, `"M"`, `"Q"` or `"H"`. The version is the smallest that fits at
-  exactly that level; the level is never silently raised.
-- `quiet`: width of the white border in modules. The QR specification says 4.
+That payload needs version 2 at level M, which is 25 modules on a side, so the
+symbol prints 12.5 mm square inside a white quiet zone 2 mm wide.
 
-Two lower-level functions are exported for callers that want to draw modules
-themselves: `encode(payload, ecc:)` returns `(n, svg-bytes)`, and
-`matrix(payload, ecc:)` returns `n` rows of `n` booleans, `true` for dark.
+```typst
+#qr(payload, module: 0.635mm, ecc: "Q", quiet: 4)
+```
 
-Payloads are encoded in byte mode as given. Pass a `str` and it is UTF-8; pass
-`bytes` and they go in verbatim.
+## Install
 
-## Build
+**From the registry.** Import `@preview/qrypst:0.1.1` as above. Typst fetches
+the package the first time it is used; there is nothing else to install.
+
+**Vendored from a release.** If you would rather not depend on the registry,
+copy two files from a [GitHub release](https://github.com/kljensen/qrypst/releases)
+next to your document and check them against the release's `SHA256SUMS`:
 
 ```sh
-rustup target add wasm32-unknown-unknown
-cargo build --release --target wasm32-unknown-unknown
-cp target/wasm32-unknown-unknown/release/qrypst.wasm .
+v=v0.1.0
+base=https://github.com/kljensen/qrypst/releases/download/$v
+curl -fsSLO $base/qrypst.wasm
+curl -fsSLO $base/qrypst.typ
+curl -fsSLO $base/SHA256SUMS
+sha256sum --check SHA256SUMS   # on macOS: shasum -a 256 --check SHA256SUMS
 ```
 
-Or `just build`. The built `qrypst.wasm` is committed so that Typst users need
-no Rust toolchain.
+For v0.1.0 the checksum file reads:
 
-## Development
-
-```sh
-just build        # build the plugin and copy qrypst.wasm to the repo root
-just test         # compile tests/smoke.typ and decode every code with zbar
-just ci           # everything CI runs, in CI's order
+```
+37842963245abfd50dc3278a841f17f59ca3f0a123c1df23484e26feee3b573c  qrypst.wasm
+7d8359bbb06379aab49545d3a05e97d65cbfab4b066eb6810859fee783a338b5  qrypst.typ
 ```
 
-The toolchain is pinned in `rust-toolchain.toml`, wasm target included, so a
-bare `rustup toolchain install` in the checkout sets up everything. The smoke
-test needs `typst`, `zbarimg` (Homebrew `zbar`) and `pdftoppm` (Homebrew
-`poppler`). Run `just build` before committing a change to `src/`: CI decodes
-the committed `qrypst.wasm` and then a fresh build of the source, and both
-must pass. The two are not compared byte for byte, because the macOS and
-Linux toolchains do not produce identical wasm even with source paths
-remapped; `just check-wasm` does that comparison on one machine.
+Then `#import "qrypst.typ": qr` by relative path. `qrypst.typ` loads
+`qrypst.wasm` from its own directory, so the two files move together, and that
+directory must be inside the project root (`typst compile --root`; by default
+the document's own directory).
 
-Releases are tags: `git tag v0.1.0 && git push --tags` builds the plugin on
-Linux twice from a clean tree to prove the build is reproducible there, and
-attaches that build, `qrypst.typ` and `SHA256SUMS` to a GitHub release. Pin
-by those checksums, not by the file in git.
+**Web app.** The Typst web app does not take an uploaded `.wasm` file, so use
+the registry import there.
 
-## Numbers
+## API
+
+| Function | Arguments | Returns |
+|---|---|---|
+| `qr(payload, module: 0.5mm, ecc: "M", quiet: 4)` | `payload`: `str` or `bytes`. `module`: `length`, the printed side of one module. `ecc`: `"L"`, `"M"`, `"Q"` or `"H"`. `quiet`: `int`, width of the white border in modules. | A `box`, `(n + 2 * quiet) * module` on a side: the symbol on a white fill, the quiet zone as inset. |
+| `encode(payload, ecc: "M")` | `payload` and `ecc` as above. | `(n, svg)`: `n` is an `int`, the module count; `svg` is `bytes` holding an SVG with a `0 0 n n` viewBox and no quiet zone. Draw it with `image(svg, format: "svg", width: n * module)`. |
+| `matrix(payload, ecc: "M")` | `payload` and `ecc` as above. | An `array` of `n` rows, each an `array` of `n` `bool`, `true` for a dark module. |
+
+A payload that does not fit at the requested level (more than 2953 bytes at
+`"L"`, fewer at the other levels) stops compilation with
+`plugin errored with: payload of 3000 bytes does not fit: DataOverCapacity(24020, 18672)`,
+the two numbers being bits needed and bits available. An `ecc` other than the
+four letters stops it with `ecc must be L, M, Q or H, got [88]`, showing the
+byte it received.
+
+## Notes
+
+- Payloads are encoded in byte mode as given. A `str` goes in as UTF-8; `bytes`
+  go in verbatim. There is no numeric or alphanumeric mode, so a payload of
+  digits alone lands in a slightly larger version than a mode-switching encoder
+  would pick.
+- The version, and so the size, is the smallest that fits at the requested
+  level. It is chosen for you and reported as `n`: 21 modules for version 1 up
+  to 177 for version 40.
+- The error-correction level is exactly the one asked for. It is never raised
+  silently, even when a higher level would fit in the same version.
+- The symbol `encode` and `matrix` return has no quiet zone. `qr` draws one
+  `quiet` modules wide (the QR specification says 4), so the clearance is in
+  paper units too.
+
+## Performance
 
 Measured with `typst compile --timings` on an M-series Mac, Typst 0.14.2, one
 120-byte payload at level M (version 7, 45 modules):
@@ -88,10 +98,48 @@ Typst runs plugins under an interpreter, which is why this is milliseconds and
 not microseconds, and why `opt-level = 3` matters: size-optimised builds run
 about 2.7 times slower there.
 
+## Building from source
+
+Check out the tag you want (`git checkout v0.1.1`) and run `just build`. That
+runs `cargo build --release --locked --target wasm32-unknown-unknown` with the
+toolchain pinned in `rust-toolchain.toml` and copies the result to
+`qrypst.wasm`. `just test` compiles `tests/smoke.typ` and decodes every code
+with zbar; it needs `typst`, `zbarimg` (Homebrew `zbar`) and `pdftoppm`
+(Homebrew `poppler`).
+
+Releases are built on Linux: the release workflow builds the tag twice from a
+clean tree, refuses to publish unless the two builds are byte-identical, and
+attaches the build, `qrypst.typ` and `SHA256SUMS`. A macOS build of the same
+source is not byte-identical to the Linux one, so compare against the release
+checksums rather than against a local build.
+
+## Updating a vendored copy
+
+Fetch the new release's `qrypst.wasm`, `qrypst.typ` and `SHA256SUMS` as in
+Install, run `sha256sum --check`, replace both files at once (they are released
+together and must match), and compile one document to confirm. Registry users
+change the version in the import line instead.
+
 ## Licence
 
-qrypst's own code is released into the public domain under the
-[Unlicense](UNLICENSE). The compiled plugin embeds
-[qrcodegen](https://github.com/nayuki/QR-Code-generator) (MIT) and
-[wasm-minimal-protocol](https://github.com/typst-community/wasm-minimal-protocol)
-(Unlicense); qrcodegen's licence is not covered by the dedication.
+qrypst's own files, `qrypst.typ`, `src/lib.rs` and everything else in this
+repository, are released into the public domain under the
+[Unlicense](LICENSE). The compiled `qrypst.wasm` also contains two
+dependencies, which keep their own licences:
+
+- [qrcodegen](https://github.com/nayuki/QR-Code-generator) is
+  Copyright (c) Project Nayuki, under the
+  [MIT licence](https://github.com/nayuki/QR-Code-generator/blob/v1.8.0/Readme.markdown#license).
+  The public-domain dedication does not cover it.
+- [wasm-minimal-protocol](https://github.com/typst-community/wasm-minimal-protocol)
+  is under the
+  [Unlicense](https://github.com/typst-community/wasm-minimal-protocol/blob/main/LICENSE).
+
+## Alternatives
+
+- [cades](https://typst.app/universe/package/cades) runs a JavaScript QR
+  library under the jogs interpreter plugin, and can colour the code; the
+  most widely used, and the slowest.
+- [tiaoma](https://typst.app/universe/package/tiaoma) is Zint compiled to
+  WebAssembly: QR plus dozens of other barcode symbologies with Zint's own
+  options. The one to use if you need anything other than a QR code.
