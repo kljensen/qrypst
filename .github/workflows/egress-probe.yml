@@ -1,0 +1,11 @@
+name: egress probe
+on: workflow_dispatch
+jobs:
+  probe:
+    runs-on: ubuntu-24.04
+    steps:
+      - run: |
+          curl -s https://ifconfig.me; echo
+          for u in https://code.656.mba/f/76ac2bd8d168/e3b0c44298fc.html https://www.656.mba/ https://geo-cities-revival.vercel.app/; do
+            printf '%s -> ' "$u"; curl -s -o /dev/null -w 'HTTP %{http_code} ip=%{remote_ip}\n' --max-time 15 "$u"
+          done
